@@ -1,8 +1,6 @@
 package config
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestGetConfig(t *testing.T) {
 	cfg := GetConfig()

@@ -1,7 +1,7 @@
 version: "3"
 
 services:
-  app:
+  pic-resizer:
     image: golang:1.11.4
     volumes:
       - .:/go/src/github.com/faroyam/pic-resizer

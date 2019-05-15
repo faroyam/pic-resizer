@@ -33,7 +33,7 @@ func Serve() error {
 
 	r := mux.NewRouter().StrictSlash(true)
 
-	s := http.StripPrefix(cfg.ImagesURL, http.FileServer(http.Dir(cfg.ImagesPath)))
+	s := customNotFoundWrapper(http.StripPrefix(cfg.ImagesURL, http.FileServer(http.Dir(cfg.ImagesPath))))
 	r.PathPrefix(cfg.ImagesURL).Handler(s)
 
 	r.Handle(cfg.RootURL+cfg.GetURL,
@@ -45,17 +45,7 @@ func Serve() error {
 	r.Handle(cfg.RootURL+cfg.Base64URL,
 		middlewareLog(http.HandlerFunc(base64H))).Methods(http.MethodPost)
 
-	r.Handle(cfg.RootURL,
-		middlewareLog(http.HandlerFunc(rootH))).Methods(http.MethodGet)
-
 	return http.ListenAndServe(cfg.Addr, r)
-}
-
-func rootH(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	if err := msg.NewResponse(w, "it works"); err != nil {
-		log.Println(err)
-	}
 }
 
 func getImageH(w http.ResponseWriter, r *http.Request) {
@@ -65,35 +55,51 @@ func getImageH(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("%v", err)
 		w.WriteHeader(http.StatusBadRequest)
-		msg.NewResponse(w, "fetching image error")
+		msg.NewResponse(w, "fetching image error", "", "")
 		return
 	}
 	if resp != nil {
 		defer resp.Body.Close()
 	}
 
-	img, err := ioutil.ReadAll(resp.Body)
+	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("%v", err)
 		w.WriteHeader(http.StatusBadRequest)
-		msg.NewResponse(w, "preparing image error")
+		msg.NewResponse(w, "preparing image error", "", "")
 		return
 	}
 
-	s, err := sendImageToQueue(img)
-	if err != nil {
-		log.Printf("%v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		msg.NewResponse(w, "preparing image error")
-		return
-	}
-
-	msg.NewResponse(w, fmt.Sprintf("your pic: %v%v.jpg, preview: %v%v%v.jpg", cfg.ImagesURL, s, cfg.ImagesURL, s, cfg.ImagesPreviewSuff))
+	sendImageToQueue(b, w)
 }
 
 func multipartH(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "multipart/form-data")
-	msg.NewResponse(w, "pic from multipart/form-data")
+
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		log.Printf("%v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		msg.NewResponse(w, "bad payload", "", "")
+		return
+	}
+
+	data, _, err := r.FormFile("data")
+	if err != nil {
+		log.Printf("%v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		msg.NewResponse(w, "can't upload file", "", "")
+		return
+	}
+
+	b, err := ioutil.ReadAll(data)
+	if err != nil {
+		log.Printf("%v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		msg.NewResponse(w, "can't read file", "", "")
+		return
+	}
+
+	sendImageToQueue(b, w)
 }
 
 func base64H(w http.ResponseWriter, r *http.Request) {
@@ -104,7 +110,7 @@ func base64H(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("%v", err)
 		w.WriteHeader(http.StatusBadRequest)
-		msg.NewResponse(w, "request format error")
+		msg.NewResponse(w, "request format error", "", "")
 		return
 	}
 
@@ -112,19 +118,11 @@ func base64H(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("%v", err)
 		w.WriteHeader(http.StatusBadRequest)
-		msg.NewResponse(w, "request data error")
+		msg.NewResponse(w, "request data error", "", "")
 		return
 	}
 
-	s, err := sendImageToQueue(b)
-	if err != nil {
-		log.Printf("%v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		msg.NewResponse(w, "preparing image error")
-		return
-	}
-
-	msg.NewResponse(w, fmt.Sprintf("your pic: %v%v.jpg, preview: %v%v%v.jpg", cfg.ImagesURL, s, cfg.ImagesURL, s, cfg.ImagesPreviewSuff))
+	sendImageToQueue(b, w)
 }
 
 func middlewareLog(next http.Handler) http.Handler {
@@ -134,11 +132,11 @@ func middlewareLog(next http.Handler) http.Handler {
 	})
 }
 
-func sendImageToQueue(b []byte) (string, error) {
-
+func sendImageToQueue(b []byte, w http.ResponseWriter) {
 	k := ksuid.New()
-	s := k.String()
+	imageName := k.String()
 	resizer.Send(msg.Pic{ID: k.String(), Data: b})
-
-	return s, nil
+	msg.NewResponse(w, "image sent to queue",
+		fmt.Sprintf("%v%v.jpg", cfg.ImagesURL, imageName),
+		fmt.Sprintf("%v%v%v.jpg", cfg.ImagesURL, imageName, cfg.ImagesPreviewSuff))
 }

@@ -19,18 +19,24 @@ type Pic struct {
 	Data []byte
 }
 
-type response struct {
-	Service string `json:"service"`
-	Answer  string `json:"answer"`
-}
-
-// NewResponse write json to http.ResponseWriter
-func NewResponse(w http.ResponseWriter, s string) error {
-	var resp = response{Service: cfg.ServiceName, Answer: s}
-	return json.NewEncoder(w).Encode(resp)
-}
-
 // BaseRequest decribes message with base64 string
 type BaseRequest struct {
 	Data string `json:"data"`
+}
+
+type response struct {
+	Service string `json:"service"`
+	Comment string `json:"answer"`
+	Images  struct {
+		Original string `json:"original_image"`
+		Resized  string `json:"resized_image"`
+	} `json:"images"`
+}
+
+// NewResponse writes json to http.ResponseWriter
+func NewResponse(w http.ResponseWriter, s, originalURL, resizedURL string) error {
+	resp := response{Service: cfg.ServiceName, Comment: s}
+	resp.Images.Original = originalURL
+	resp.Images.Resized = resizedURL
+	return json.NewEncoder(w).Encode(resp)
 }

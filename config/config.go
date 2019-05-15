@@ -24,11 +24,11 @@ type Config struct {
 	ImagesPreviewSuff string `json:"image_preview_suffix"`
 }
 
-// GetConfig read config file on startup and returns configeration
+// GetConfig reads config file on startup and returns configuration
 func GetConfig() *Config {
 	doOnce.Do(func() {
 		cfg = &Config{
-			ServiceName:       "Pic-resizer",
+			ServiceName:       "pic-resizer",
 			Addr:              "0.0.0.0:8080",
 			RootURL:           "/v1",
 			GetURL:            "/get",
@@ -40,22 +40,21 @@ func GetConfig() *Config {
 		}
 
 		defer func() {
-			log.Printf(`%v started...
-	guide:
-	to send image via link send GET request to: %v%v%v?url=http://example.com/image.jpg
-	to send image as base64 string send POST request {"data":"YXNk..."} to: %v%v%v
-	to send image as multipart/form-data send POST request to: %v%v%v
-	resized image will appear at: %v%v<unique string>%v.jpg
-	original image will be stored at: %v%v<unique string>.jpg
-	images directory: %v`,
+			log.Printf(`running config: 
+			ServiceName: %v,
+			Addr: %v,
+			RootURL: %v,
+			GetURL: %v,
+			MultipartURL: %v,
+			Base64URL: %v,
+			ImagesURL: %v,
+			ImagesPath: %v,
+			ImagesPreviewSuff: %v`,
 				cfg.ServiceName,
-				cfg.Addr, cfg.RootURL, cfg.GetURL,
-				cfg.Addr, cfg.RootURL, cfg.Base64URL,
-				cfg.Addr, cfg.RootURL, cfg.MultipartURL,
-				cfg.Addr, cfg.ImagesURL, cfg.ImagesPreviewSuff,
-				cfg.Addr, cfg.ImagesURL,
-				cfg.ImagesPath,
-			)
+				cfg.Addr, cfg.RootURL,
+				cfg.GetURL, cfg.MultipartURL,
+				cfg.Base64URL, cfg.ImagesURL,
+				cfg.ImagesPath, cfg.ImagesPreviewSuff)
 		}()
 
 		jsonFile, err := os.Open("config.json")

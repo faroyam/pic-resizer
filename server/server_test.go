@@ -11,21 +11,8 @@ import (
 	"time"
 )
 
-func TestRoot(t *testing.T) {
-	req, err := http.NewRequest("GET", "http://localhost"+cfg.Addr+cfg.RootURL, nil)
-	if err != nil {
-		t.Errorf("creating request error: %v", err)
-	}
-
-	recorder := httptest.NewRecorder()
-	rootH(recorder, req)
-
-	if recorder.Code != http.StatusOK {
-		t.Errorf("expected OK, got %v", recorder.Code)
-	}
-}
-
 func TestGetImage(t *testing.T) {
+
 	req, err := http.NewRequest("GET", "http://localhost"+cfg.Addr+cfg.RootURL+cfg.GetURL+"?url=http://thiscatdoesnotexist.com", nil)
 	if err != nil {
 		t.Errorf("creating request error: %v", err)
@@ -36,6 +23,20 @@ func TestGetImage(t *testing.T) {
 
 	if recorder.Code != http.StatusOK {
 		t.Errorf("expected OK, got %v", recorder.Code)
+	}
+}
+
+func TestGetImageBadURL(t *testing.T) {
+
+	req, err := http.NewRequest("GET", "http://localhost"+cfg.Addr+cfg.RootURL+cfg.GetURL+"?url=http://thisURLdoesnotexist.com", nil)
+	if err != nil {
+		t.Errorf("creating request error: %v", err)
+	}
+	recorder := httptest.NewRecorder()
+	getImageH(recorder, req)
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Errorf("expected StatusBadRequest, got %v", recorder.Code)
 	}
 }
 
@@ -72,18 +73,20 @@ func TestBase64(t *testing.T) {
 }
 
 func TestMultipartH(t *testing.T) {
+
 	req, err := http.NewRequest("POST", "http://localhost"+cfg.Addr+cfg.RootURL+cfg.MultipartURL, nil)
 	if err != nil {
 		t.Errorf("creating request error: %v", err)
 	}
 	recorder := httptest.NewRecorder()
 	multipartH(recorder, req)
-	if recorder.Code != http.StatusOK {
+	if recorder.Code != http.StatusBadRequest {
 		t.Errorf("expected OK, got %v", recorder.Code)
 	}
 }
 
 func TestStartServe(t *testing.T) {
+
 	err := make(chan error)
 	go func() {
 		err <- Serve()

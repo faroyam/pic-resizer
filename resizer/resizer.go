@@ -18,7 +18,7 @@ func init() {
 	cfg = c.GetConfig()
 }
 
-// StartService starts N workers to wait incoming from queue images, where N = NumCPU
+// StartService starts N workers, which wait for incoming images from queue, where N = NumCPU
 func StartService() {
 	for w := 0; w < runtime.NumCPU(); w++ {
 		go worker(queue)
@@ -44,12 +44,13 @@ func resize(m msg.Pic) error {
 	if err != nil {
 		return err
 	}
+
+	resizsedImage := imaging.Thumbnail(initImage, 100, 100, imaging.CatmullRom)
+
 	err = imaging.Save(initImage, cfg.ImagesPath+m.ID+".jpg")
 	if err != nil {
 		return err
 	}
-
-	resizsedImage := imaging.Thumbnail(initImage, 100, 100, imaging.CatmullRom)
 
 	err = imaging.Save(resizsedImage, cfg.ImagesPath+m.ID+cfg.ImagesPreviewSuff+".jpg")
 	if err != nil {
