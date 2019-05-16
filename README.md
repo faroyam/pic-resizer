@@ -17,6 +17,7 @@ There are three ways to use it:
  - send a POST request to http://localhost:8080/v1/base with content-type application/json {"data":"image"}, 
  where image is a base64 string 
  - send a POST request to http://localhost:8080/v1/multipart with content-type multipart/form-data  
+
 If successful, the response will contain links to the original and resized images
 
 ## Examples
